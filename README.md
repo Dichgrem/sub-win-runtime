@@ -10,22 +10,23 @@ Offline installer for the common Microsoft runtimes, built from official winget 
 ```powershell
 git clone https://github.com/Dichgrem/sub-win-runtime.git
 cd sub-win-runtime
-.\build-bundle.ps1        # fetch official installers → payload/ (~124 MB, network needed)
-.\build-installer.ps1     # → dist\windows-runtimes-offline-setup.exe (~117 MB)
+.\build-bundle.ps1        # fetch official installers → payload/   (core ~124 MB, network needed)
+.\build-installer.ps1     # → dist\windows-runtimes-<date>.exe   (126 MB core / 444 MB with extras)
 ```
 
-Copy the exe to any Windows 10/11 x64 machine and double-click — no network required.
-Append `-IncludeDirectX` / `-IncludeDotNet` to both scripts for legacy DirectX and .NET 6/8/10.
+Copy the exe to any Windows 10/11 x64 machine and double-click — pick the components you need, no network required.
+Append `-IncludeDirectX` / `-IncludeDotNet` to both scripts to bundle legacy DirectX and .NET 6/8/10 (the picker then offers them).
 
 Already online? Use winget directly: `.\install-online.ps1`
+CI (manual trigger) builds the full payload and publishes release `v<date>` with `windows-runtimes-<date>.exe` + `.sha256`.
 
 ## How It Works
 
 ```
 winget manifest (URL + SHA-256 + silent switches)
   └─ build-bundle.ps1       → payload/            Microsoft-signed installers
-     └─ build-installer.ps1 → single exe          Inno Setup + LZMA2
-        └─ double-click     → UAC → install-offline.ps1 → MSI/Burn silent install
+     └─ build-installer.ps1 → windows-runtimes-<date>.exe   Inno Setup + component picker
+        └─ double-click     → UAC → pick components → install-offline.ps1 → MSI/Burn silent install
 ```
 
 ## Coverage

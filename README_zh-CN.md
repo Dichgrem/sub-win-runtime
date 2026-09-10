@@ -10,22 +10,23 @@
 ```powershell
 git clone https://github.com/Dichgrem/sub-win-runtime.git
 cd sub-win-runtime
-.\build-bundle.ps1        # 下载官方安装器 → payload/（约 124 MB，需联网）
-.\build-installer.ps1     # → dist\windows-runtimes-offline-setup.exe（约 117 MB）
+.\build-bundle.ps1        # 下载官方安装器 → payload/（核心约 124 MB，需联网）
+.\build-installer.ps1     # → dist\windows-runtimes-<日期>.exe（核心 126 MB / 含可选 444 MB）
 ```
 
-把 exe 拷到任意 Windows 10/11 x64 机器双击即可，**无需联网**。
-两个脚本后加 `-IncludeDirectX` / `-IncludeDotNet` 可附带 legacy DirectX 与 .NET 6/8/10。
+把 exe 拷到任意 Windows 10/11 x64 机器双击即可，**无需联网**；安装时可在组件页勾选需要的组件。
+两个脚本后加 `-IncludeDirectX` / `-IncludeDotNet` 可附带 legacy DirectX 与 .NET 6/8/10（打包后组件页才会出现对应选项）。
 
 目标机有网时可直接用 winget：`.\install-online.ps1`
+CI：手动触发 → 全量构建 → 自动发 Release `v<日期>`（附件 `windows-runtimes-<日期>.exe` + `.sha256`）。
 
 ## 工作原理
 
 ```
 winget manifest（URL + SHA-256 + 静默参数）
   └─ build-bundle.ps1       → payload/            微软签名安装器
-     └─ build-installer.ps1 → 单文件 exe          Inno Setup + LZMA2
-        └─ 双击             → UAC → install-offline.ps1 → MSI/Burn 静默安装
+     └─ build-installer.ps1 → windows-runtimes-<日期>.exe   Inno Setup + 组件选择页
+        └─ 双击             → UAC → 勾选组件 → install-offline.ps1 → MSI/Burn 静默安装
 ```
 
 ## 覆盖范围
