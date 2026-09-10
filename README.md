@@ -1,11 +1,9 @@
-# sub-win-runtime
+# sub-win-runtime <a href="README_zh-CN.md"><img align="right" alt="简体中文" src="https://img.shields.io/badge/%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-gray"></a><a href="README.md"><img align="right" alt="English" src="https://img.shields.io/badge/English-blue"></a>
 
 Offline installer for the common Microsoft runtimes, built from official winget sources.
 
-[![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11%20x64-blue)](<>)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-
-[中文](README_zh-CN.md)
+![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11%20x64-blue)
+![License](https://img.shields.io/badge/License-MIT-green.svg)
 
 ## Install
 
@@ -38,11 +36,3 @@ winget manifest (URL + SHA-256 + silent switches)
 | Visual Studio Tools for Office Runtime 4.0                    | `Microsoft.VSTOR`      |
 | Legacy DirectX 9/10/11 _(optional)_                           | `Microsoft.DirectX`    |
 | .NET 6 / 8 / 10 _(optional)_                                  | `Microsoft.DotNet.*`   |
-
-## Docs
-
-[Guide](docs/guide.md) — usage, build, package reference
-
-## License
-
-MIT. Microsoft installers are fetched from official channels at build time and are not distributed by this repository.

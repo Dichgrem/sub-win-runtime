@@ -1,11 +1,9 @@
-# sub-win-runtime
+# sub-win-runtime <a href="README_zh-CN.md"><img align="right" alt="简体中文" src="https://img.shields.io/badge/%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-blue"></a><a href="README.md"><img align="right" alt="English" src="https://img.shields.io/badge/English-gray"></a>
 
 微软常用运行库离线安装器，全部由官方 winget 源构建。
 
-[![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11%20x64-blue)](<>)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-
-[English](README.md)
+![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11%20x64-blue)
+![License](https://img.shields.io/badge/License-MIT-green.svg)
 
 ## 安装
 
@@ -38,11 +36,3 @@ winget manifest（URL + SHA-256 + 静默参数）
 | Visual Studio Tools for Office Runtime 4.0                     | `Microsoft.VSTOR`      |
 | legacy DirectX 9/10/11（可选）                                 | `Microsoft.DirectX`    |
 | .NET 6 / 8 / 10（可选）                                        | `Microsoft.DotNet.*`   |
-
-## 文档
-
-[指南](docs/guide.md) —— 使用、构建、参考
-
-## 许可
-
-MIT。微软安装器由构建时从官方渠道获取，本仓库不分发这些二进制。
