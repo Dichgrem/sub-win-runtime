@@ -1,0 +1,15 @@
+# ---- build artifacts (never commit Microsoft binaries) ----
+payload/
+dist/
+tools/
+*.msp
+
+# ---- logs / temp ----
+*.log
+install-offline.log
+installer-output.txt
+
+# ---- OS noise ----
+Thumbs.db
+desktop.ini
+.DS_Store
