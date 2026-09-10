@@ -5,6 +5,10 @@
 ![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11%20x64-blue)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
+<p align="center">
+  <img src="example.webp" width="598" alt="安装器 — 组件选择页">
+</p>
+
 ## 安装
 
 ```powershell

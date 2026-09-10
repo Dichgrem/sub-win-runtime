@@ -9,3 +9,4 @@
 *.exe   binary
 *.msi   binary
 *.ico   binary
+*.webp  binary
