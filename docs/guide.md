@@ -143,7 +143,6 @@ winget list --source winget | Select-String 'VCRedist|VSTOR'
 | `payload/<PackageId>/` | 官方安装器 + manifest（`.yaml`）|
 | `payload/dotnet/`、`payload/DirectX/` | 可选载荷 |
 | `dist/windows-runtimes-offline-setup.exe` | 单文件安装器 |
-| `tools/` | 构建期临时工具（innoextract / Inno Setup）|
 | `%ProgramFiles%\WindowsRuntimesOffline\` | 目标机安装位置（含日志）|
 
 ### 不覆盖

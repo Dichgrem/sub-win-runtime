@@ -43,42 +43,17 @@ function Find-Iscc {
     return $null
 }
 
-function Get-IsccPortable {
-    $tools = Join-Path $PSScriptRoot 'tools'
-    New-Item -ItemType Directory -Force -Path $tools | Out-Null
-
-    # innoextract (open-source Inno Setup unpacker)
-    $innoEx = (Get-ChildItem $tools -Recurse -Filter innoextract.exe -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
-    if (-not $innoEx) {
-        Write-Host 'fetching innoextract...' -ForegroundColor Cyan
-        $rel = Invoke-RestMethod 'https://api.github.com/repos/dscharrer/innoextract/releases/latest' -Headers @{'User-Agent'='PowerShell'}
-        $asset = $rel.assets | Where-Object { $_.name -match 'windows' } | Select-Object -First 1
-        $zip = Join-Path $tools 'innoextract.zip'
-        Invoke-WebRequest $asset.browser_download_url -OutFile $zip -UseBasicParsing
-        Expand-Archive $zip -DestinationPath $tools -Force
-        $innoEx = (Get-ChildItem $tools -Recurse -Filter innoextract.exe | Select-Object -First 1).FullName
-    }
-
-    # Inno Setup installer via winget
-    $dl = Join-Path $tools 'inno-dl'
-    if (-not (Get-ChildItem $dl -Recurse -Filter *.exe -ErrorAction SilentlyContinue)) {
-        Write-Host 'fetching Inno Setup...' -ForegroundColor Cyan
-        winget download --exact --id JRSoftware.InnoSetup --download-directory $dl `
-            --accept-package-agreements --accept-source-agreements --disable-interactivity | Out-Null
-    }
-    $setup = Get-ChildItem $dl -Recurse -Filter *.exe | Select-Object -First 1
-
-    $out = Join-Path $tools 'inno'
-    Write-Host 'extracting Inno Setup (portable)...' -ForegroundColor Cyan
-    & $innoEx -e -d $out --no-warn $setup.FullName | Out-Null
-
-    $iscc = (Get-ChildItem $out -Recurse -Filter ISCC.exe | Select-Object -First 1).FullName
-    if (-not $iscc) { throw 'ISCC.exe not found after extraction' }
-    return $iscc
+function Install-Iscc {
+    Write-Host 'Inno Setup not found -> installing via winget...' -ForegroundColor Cyan
+    winget install --exact --id JRSoftware.InnoSetup `
+        --accept-package-agreements --accept-source-agreements --disable-interactivity | Out-Null
+    $found = Find-Iscc
+    if (-not $found) { throw 'Inno Setup installed, but ISCC.exe not found' }
+    return $found
 }
 
 $iscc = Find-Iscc
-if (-not $iscc) { $iscc = Get-IsccPortable }
+if (-not $iscc) { $iscc = Install-Iscc }
 Write-Host "ISCC: $iscc" -ForegroundColor Green
 
 # ---------- 3. compile ----------
