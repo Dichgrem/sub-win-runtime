@@ -24,13 +24,13 @@ param(
     [switch]$Quiet
 )
 
-$root    = Split-Path -Parent $MyInvocation.MyCommand.Path
+$root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $payload = Join-Path $root 'payload'
 $logFile = Join-Path $root 'install-offline.log'
 
-$script:okCount     = 0
-$script:skipCount   = 0
-$script:failList    = @()
+$script:okCount = 0
+$script:skipCount = 0
+$script:failList = @()
 
 function Write-Log {
     param([string]$Message, [string]$Color = 'Gray')
@@ -141,7 +141,7 @@ if ($IncludeDotNet) {
 
 # ---------------------------------------------------------------- summary
 $rebootPending = (Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending') -or
-                 (Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired')
+(Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired')
 
 Write-Log ''
 Write-Log ('===== Summary: {0} installed/touched, {1} failed =====' -f $script:okCount, $script:failList.Count) 'Yellow'

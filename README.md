@@ -2,7 +2,7 @@
 
 Offline installer for the common Microsoft runtimes, built from official winget sources.
 
-[![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11%20x64-blue)]()
+[![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11%20x64-blue)](<>)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 [中文](README_zh-CN.md)
@@ -32,12 +32,12 @@ winget manifest (URL + SHA-256 + silent switches)
 
 ## Coverage
 
-| Component | winget ID |
-|---|---|
+| Component                                                     | winget ID              |
+| ------------------------------------------------------------- | ---------------------- |
 | VC++ 2005 / 2008 / 2010 / 2012 / 2013 / 2015-2022 (x86 + x64) | `Microsoft.VCRedist.*` |
-| Visual Studio Tools for Office Runtime 4.0 | `Microsoft.VSTOR` |
-| Legacy DirectX 9/10/11 *(optional)* | `Microsoft.DirectX` |
-| .NET 6 / 8 / 10 *(optional)* | `Microsoft.DotNet.*` |
+| Visual Studio Tools for Office Runtime 4.0                    | `Microsoft.VSTOR`      |
+| Legacy DirectX 9/10/11 _(optional)_                           | `Microsoft.DirectX`    |
+| .NET 6 / 8 / 10 _(optional)_                                  | `Microsoft.DotNet.*`   |
 
 ## Docs
 

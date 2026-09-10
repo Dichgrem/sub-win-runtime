@@ -2,7 +2,7 @@
 
 微软常用运行库离线安装器，全部由官方 winget 源构建。
 
-[![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11%20x64-blue)]()
+[![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11%20x64-blue)](<>)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 [English](README.md)
@@ -32,12 +32,12 @@ winget manifest（URL + SHA-256 + 静默参数）
 
 ## 覆盖范围
 
-| 组件 | winget 包 ID |
-|---|---|
-| VC++ 2005 / 2008 / 2010 / 2012 / 2013 / 2015-2022（x86 + x64）| `Microsoft.VCRedist.*` |
-| Visual Studio Tools for Office Runtime 4.0 | `Microsoft.VSTOR` |
-| legacy DirectX 9/10/11（可选）| `Microsoft.DirectX` |
-| .NET 6 / 8 / 10（可选）| `Microsoft.DotNet.*` |
+| 组件                                                           | winget 包 ID           |
+| -------------------------------------------------------------- | ---------------------- |
+| VC++ 2005 / 2008 / 2010 / 2012 / 2013 / 2015-2022（x86 + x64） | `Microsoft.VCRedist.*` |
+| Visual Studio Tools for Office Runtime 4.0                     | `Microsoft.VSTOR`      |
+| legacy DirectX 9/10/11（可选）                                 | `Microsoft.DirectX`    |
+| .NET 6 / 8 / 10（可选）                                        | `Microsoft.DotNet.*`   |
 
 ## 文档
 

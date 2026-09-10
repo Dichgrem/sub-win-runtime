@@ -59,7 +59,7 @@ Write-Host "ISCC: $iscc" -ForegroundColor Green
 # ---------- 3. compile ----------
 $defs = @()
 if ($IncludeDirectX) { $defs += '/DINCLUDE_DIRECTX' }
-if ($IncludeDotNet)  { $defs += '/DINCLUDE_DOTNET' }
+if ($IncludeDotNet) { $defs += '/DINCLUDE_DOTNET' }
 
 Write-Host 'compiling offline installer...' -ForegroundColor Yellow
 & $iscc @defs (Join-Path $root 'installer.iss')

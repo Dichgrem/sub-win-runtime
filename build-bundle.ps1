@@ -18,7 +18,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$root    = Split-Path -Parent $MyInvocation.MyCommand.Path
+$root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $payload = Join-Path $root 'payload'
 New-Item -ItemType Directory -Force -Path $payload | Out-Null
 
@@ -28,18 +28,18 @@ if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
 }
 
 $core = @(
-    'Microsoft.VCRedist.2005.x86','Microsoft.VCRedist.2005.x64',
-    'Microsoft.VCRedist.2008.x86','Microsoft.VCRedist.2008.x64',
-    'Microsoft.VCRedist.2010.x86','Microsoft.VCRedist.2010.x64',
-    'Microsoft.VCRedist.2012.x86','Microsoft.VCRedist.2012.x64',
-    'Microsoft.VCRedist.2013.x86','Microsoft.VCRedist.2013.x64',
-    'Microsoft.VCRedist.2015+.x86','Microsoft.VCRedist.2015+.x64',
+    'Microsoft.VCRedist.2005.x86', 'Microsoft.VCRedist.2005.x64',
+    'Microsoft.VCRedist.2008.x86', 'Microsoft.VCRedist.2008.x64',
+    'Microsoft.VCRedist.2010.x86', 'Microsoft.VCRedist.2010.x64',
+    'Microsoft.VCRedist.2012.x86', 'Microsoft.VCRedist.2012.x64',
+    'Microsoft.VCRedist.2013.x86', 'Microsoft.VCRedist.2013.x64',
+    'Microsoft.VCRedist.2015+.x86', 'Microsoft.VCRedist.2015+.x64',
     'Microsoft.VSTOR'
 )
 $dotnet = @(
-    'Microsoft.DotNet.Runtime.6','Microsoft.DotNet.Runtime.8',
-    'Microsoft.DotNet.DesktopRuntime.6','Microsoft.DotNet.DesktopRuntime.8',
-    'Microsoft.DotNet.DesktopRuntime.10','Microsoft.DotNet.AspNetCore.8'
+    'Microsoft.DotNet.Runtime.6', 'Microsoft.DotNet.Runtime.8',
+    'Microsoft.DotNet.DesktopRuntime.6', 'Microsoft.DotNet.DesktopRuntime.8',
+    'Microsoft.DotNet.DesktopRuntime.10', 'Microsoft.DotNet.AspNetCore.8'
 )
 
 function Get-WingetPackage([string]$Id, [string]$TargetDir) {
@@ -53,11 +53,11 @@ function Get-WingetPackage([string]$Id, [string]$TargetDir) {
 }
 
 Write-Host "`n=== Fetching official installers ===`n" -ForegroundColor Yellow
-foreach ($id in $core) { Get-WingetPackage $id (Join-Path $payload $id) }
+foreach ($id in $core) { Get-WinGetPackage $id (Join-Path $payload $id) }
 
 if ($IncludeDotNet) {
     Write-Host "`n--- extra: .NET modern runtimes ---" -ForegroundColor Yellow
-    foreach ($id in $dotnet) { Get-WingetPackage $id (Join-Path $payload "dotnet\$id") }
+    foreach ($id in $dotnet) { Get-WinGetPackage $id (Join-Path $payload "dotnet\$id") }
 }
 
 if ($IncludeDirectX) {
