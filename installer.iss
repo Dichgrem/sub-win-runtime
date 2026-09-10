@@ -12,6 +12,8 @@ AppId={{8F3A6E1C-2B4D-4C77-9E51-7A1D3C5B9E42}
 AppName={#AppName}
 AppVersion={#AppVer}
 AppPublisher=windows-runtimes-offline
+SetupIconFile=assets\app.ico
+UninstallDisplayIcon={app}\app.ico
 DefaultDirName={autopf}\WindowsRuntimesOffline
 DisableDirPage=yes
 DisableProgramGroupPage=yes
@@ -48,6 +50,7 @@ Name: "directx"; Description: "legacy DirectX 9/10/11 (June 2010)"; Types: full
 
 [Files]
 Source: "install-offline.ps1"; DestDir: "{app}"; Flags: ignoreversion
+Source: "assets\app.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 Source: "payload\Microsoft.VCRedist.2005.x86\*"; DestDir: "{app}\payload\Microsoft.VCRedist.2005.x86"; Components: vc\v2005; Excludes: "*.yaml"; Flags: recursesubdirs createallsubdirs
 Source: "payload\Microsoft.VCRedist.2005.x64\*"; DestDir: "{app}\payload\Microsoft.VCRedist.2005.x64"; Components: vc\v2005; Excludes: "*.yaml"; Flags: recursesubdirs createallsubdirs

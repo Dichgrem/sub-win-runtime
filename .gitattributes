@@ -8,3 +8,4 @@
 *.md    text eol=lf
 *.exe   binary
 *.msi   binary
+*.ico   binary
