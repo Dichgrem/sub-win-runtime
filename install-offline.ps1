@@ -2,7 +2,18 @@
 <#
 .SYNOPSIS
     Offline runtime installer - installs everything from .\payload, no network needed.
+
+.DESCRIPTION
     Silent switches are taken verbatim from the official winget manifests.
+
+    When -ProgressFile is given, machine-readable progress is appended for the
+    GUI installer (installer.iss reads it to drive a real progress bar):
+
+        TOTAL|<n>            total number of steps
+        BEGIN|<name>         a component started
+        DONE|<name>          component installed (or already present)
+        FAIL|<name>          component failed
+        FINISH|<failCount>   all done
 
 .PARAMETER IncludeDirectX
     Install legacy DirectX (requires payload\DirectX\directx_Jun2010_redist.exe).
@@ -11,17 +22,21 @@
     Install .NET modern runtimes (requires payload\dotnet\*).
 
 .PARAMETER Quiet
-    No console progress (log file only).
+    No console output (log file only).
+
+.PARAMETER ProgressFile
+    Path the progress lines are appended to (used by installer.iss).
 
 .EXAMPLE
     .\install-offline.ps1
-    .\install-offline.ps1 -IncludeDirectX -IncludeDotNet
+    .\install-offline.ps1 -IncludeDirectX -IncludeDotNet -ProgressFile C:\temp\p.txt
 #>
 [CmdletBinding()]
 param(
     [switch]$IncludeDirectX,
     [switch]$IncludeDotNet,
-    [switch]$Quiet
+    [switch]$Quiet,
+    [string]$ProgressFile
 )
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -29,7 +44,6 @@ $payload = Join-Path $root 'payload'
 $logFile = Join-Path $root 'install-offline.log'
 
 $script:okCount = 0
-$script:skipCount = 0
 $script:failList = @()
 
 function Write-Log {
@@ -38,12 +52,77 @@ function Write-Log {
     Add-Content -LiteralPath $logFile -Value ("[{0}] {1}" -f (Get-Date -Format 'HH:mm:ss'), $Message) -Encoding UTF8
 }
 
+function Write-Step {
+    param([string]$Line)
+    if ($ProgressFile) {
+        try { Add-Content -LiteralPath $ProgressFile -Value $Line -Encoding UTF8 } catch { }
+    }
+}
+
 function Test-Admin {
     $id = [Security.Principal.WindowsIdentity]::GetCurrent()
     (New-Object Security.Principal.WindowsPrincipal($id)).IsInRole(
         [Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
+function Invoke-InstallerStep {
+    param([hashtable]$Step)
+
+    $dir = Join-Path $payload $Step.Folder
+    $exe = Get-ChildItem $dir -Filter *.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $exe) {
+        Write-Log ("  [MISS] {0} - installer not found in {1}" -f $Step.Name, $Step.Folder) 'Yellow'
+        $script:failList += "$($Step.Name) (missing file)"
+        return $false
+    }
+
+    Write-Log ("  [..] {0}  ({1})" -f $Step.Name, $exe.Name) 'Cyan'
+    $p = Start-Process -FilePath $exe.FullName -ArgumentList $Step.Args -Wait -PassThru -NoNewWindow
+    $code = $p.ExitCode
+    # 0 = ok, 1638/1641/1645 = already installed / superseded, 3010 = ok but reboot needed
+    if ($code -in 0, 1638, 1641, 1645, 3010) {
+        if ($code -eq 3010) { Write-Log ("       ok (exit {0}, reboot pending)" -f $code) 'Green' }
+        else { Write-Log '       ok' 'Green' }
+        $script:okCount++
+        return $true
+    }
+
+    Write-Log ("       FAILED (exit {0})" -f $code) 'Red'
+    $script:failList += "$($Step.Name) (exit $code)"
+    return $false
+}
+
+function Invoke-DirectXStep {
+    $sfx = Join-Path $payload 'DirectX\directx_Jun2010_redist.exe'
+    if (-not (Test-Path $sfx)) {
+        Write-Log '       MISS: payload\DirectX\directx_Jun2010_redist.exe' 'Yellow'
+        $script:failList += 'DirectX (missing file)'
+        return $false
+    }
+
+    $tmp = Join-Path $env:TEMP ('dx_' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+    New-Item -ItemType Directory -Force -Path $tmp | Out-Null
+    Write-Log '  [..] extracting DirectX redist...' 'Cyan'
+    Start-Process $sfx -ArgumentList "/Q /T:$tmp" -Wait -NoNewWindow | Out-Null
+
+    $setup = Join-Path $tmp 'DXSETUP.exe'
+    if (-not (Test-Path $setup)) {
+        Write-Log '       FAILED: DXSETUP.exe not found after extract' 'Red'
+        $script:failList += 'DirectX (extract failed)'
+        Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
+        return $false
+    }
+
+    $p = Start-Process $setup -ArgumentList '/silent' -Wait -PassThru -NoNewWindow
+    Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
+    if ($p.ExitCode -eq 0) { Write-Log '       ok' 'Green'; $script:okCount++; return $true }
+
+    Write-Log ("       FAILED (exit {0})" -f $p.ExitCode) 'Red'
+    $script:failList += "DirectX (exit $($p.ExitCode))"
+    return $false
+}
+
+# ---------------------------------------------------------------- preflight
 if (-not (Test-Admin)) {
     Write-Host 'ERROR: Administrator rights are required. Please run install-offline.cmd' -ForegroundColor Red
     exit 1
@@ -55,37 +134,11 @@ if (-not (Test-Path $payload)) {
 }
 
 "=== Offline runtimes install started $(Get-Date) ===" | Set-Content -LiteralPath $logFile -Encoding UTF8
-Write-Log "Payload: $payload"
-Write-Log ''
+if ($ProgressFile) { Remove-Item -LiteralPath $ProgressFile -Force -ErrorAction SilentlyContinue }
 
-function Invoke-Installer {
-    param([string]$Name, [string]$Folder, [string[]]$Arguments)
-
-    $dir = Join-Path $payload $Folder
-    $exe = Get-ChildItem $dir -Filter *.exe -ErrorAction SilentlyContinue | Select-Object -First 1
-    if (-not $exe) {
-        Write-Log ("  [MISS] {0} - installer not found in {1}" -f $Name, $Folder) 'Yellow'
-        $script:failList += "$Name (missing file)"
-        return
-    }
-
-    Write-Log ("  [..] {0}  ({1})" -f $Name, $exe.Name) 'Cyan'
-    $p = Start-Process -FilePath $exe.FullName -ArgumentList $Arguments -Wait -PassThru -NoNewWindow
-    $code = $p.ExitCode
-    # 0 = ok, 1638/1641/1645 = already installed / superseded, 3010 = ok but reboot needed
-    if ($code -in 0, 1638, 1641, 1645, 3010) {
-        if ($code -eq 3010) { Write-Log ("       ok (exit {0}, reboot pending)" -f $code) 'Green' }
-        else { Write-Log '       ok' 'Green' }
-        $script:okCount++
-    }
-    else {
-        Write-Log ("       FAILED (exit {0})" -f $code) 'Red'
-        $script:failList += "$Name (exit $code)"
-    }
-}
-
-# ---------------------------------------------------------------- core (same as the classic bundle)
-$items = @(
+# ---------------------------------------------------------------- build step list
+$steps = @()
+$core = @(
     @{ Name = 'VC++ 2005 x86'; Folder = 'Microsoft.VCRedist.2005.x86'; Args = @('/Q', '/C:"msiexec /i ""vcredist.msi"" /quiet /norestart"') },
     @{ Name = 'VC++ 2005 x64'; Folder = 'Microsoft.VCRedist.2005.x64'; Args = @('/Q', '/C:"msiexec /i ""vcredist.msi"" /quiet /norestart"') },
     @{ Name = 'VC++ 2008 x86'; Folder = 'Microsoft.VCRedist.2008.x86'; Args = @('/qn') },
@@ -100,43 +153,32 @@ $items = @(
     @{ Name = 'VC++ 2015-2022 (v14) x64'; Folder = 'Microsoft.VCRedist.2015+.x64'; Args = @('/quiet', '/norestart') },
     @{ Name = 'VSTO 4.0 Runtime'; Folder = 'Microsoft.VSTOR'; Args = @('/q', '/norestart') }
 )
+foreach ($i in $core) { $steps += @{ Kind = 'pkg'; Name = $i.Name; Folder = $i.Folder; Args = $i.Args } }
 
-Write-Log ("Installing {0} core packages..." -f $items.Count) 'White'
-foreach ($i in $items) { Invoke-Installer -Name $i.Name -Folder $i.Folder -Arguments $i.Args }
-
-# ---------------------------------------------------------------- optional: legacy DirectX
-if ($IncludeDirectX) {
-    Write-Log ''
-    Write-Log 'Installing legacy DirectX (June 2010)...' 'White'
-    $sfx = Join-Path $payload 'DirectX\directx_Jun2010_redist.exe'
-    if (Test-Path $sfx) {
-        $tmp = Join-Path $env:TEMP ('dx_' + [guid]::NewGuid().ToString('N').Substring(0, 8))
-        New-Item -ItemType Directory -Force -Path $tmp | Out-Null
-        Write-Log '  [..] extracting redist...' 'Cyan'
-        Start-Process $sfx -ArgumentList "/Q /T:$tmp" -Wait -NoNewWindow | Out-Null
-        $setup = Join-Path $tmp 'DXSETUP.exe'
-        if (Test-Path $setup) {
-            $p = Start-Process $setup -ArgumentList '/silent' -Wait -PassThru -NoNewWindow
-            if ($p.ExitCode -eq 0) { Write-Log '       ok' 'Green'; $script:okCount++ }
-            else { Write-Log ("       FAILED (exit {0})" -f $p.ExitCode) 'Red'; $script:failList += "DirectX (exit $($p.ExitCode))" }
-        }
-        else { Write-Log '       FAILED: DXSETUP.exe not found after extract' 'Red'; $script:failList += 'DirectX (extract failed)' }
-        Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
-    }
-    else { Write-Log '       MISS: payload\DirectX\directx_Jun2010_redist.exe' 'Yellow'; $script:failList += 'DirectX (missing file)' }
-}
-
-# ---------------------------------------------------------------- optional: .NET modern runtimes
 if ($IncludeDotNet) {
-    Write-Log ''
-    Write-Log 'Installing .NET modern runtimes...' 'White'
     $dnRoot = Join-Path $payload 'dotnet'
     if (Test-Path $dnRoot) {
         foreach ($dir in Get-ChildItem $dnRoot -Directory) {
-            Invoke-Installer -Name $dir.Name -Folder "dotnet\$($dir.Name)" -Arguments @('/install', '/quiet', '/norestart')
+            $steps += @{ Kind = 'pkg'; Name = $dir.Name; Folder = "dotnet\$($dir.Name)"; Args = @('/install', '/quiet', '/norestart') }
         }
     }
-    else { Write-Log '       MISS: payload\dotnet (run build-bundle.ps1 -IncludeDotNet)' 'Yellow' }
+    else {
+        Write-Log '       MISS: payload\dotnet (run build-bundle.ps1 -IncludeDotNet)' 'Yellow'
+    }
+}
+
+if ($IncludeDirectX) {
+    $steps += @{ Kind = 'directx'; Name = 'Legacy DirectX (June 2010)'; Folder = 'DirectX' }
+}
+
+# ---------------------------------------------------------------- run
+Write-Log ("Installing {0} components..." -f $steps.Count) 'White'
+Write-Step ("TOTAL|{0}" -f $steps.Count)
+
+foreach ($step in $steps) {
+    Write-Step ("BEGIN|{0}" -f $step.Name)
+    if ($step.Kind -eq 'directx') { $ok = Invoke-DirectXStep } else { $ok = Invoke-InstallerStep $step }
+    Write-Step ("{0}|{1}" -f $(if ($ok) { 'DONE' } else { 'FAIL' }), $step.Name)
 }
 
 # ---------------------------------------------------------------- summary
@@ -149,5 +191,6 @@ if ($script:failList.Count -gt 0) { foreach ($f in $script:failList) { Write-Log
 if ($rebootPending) { Write-Log 'Reboot is recommended to finish installation.' 'Yellow' }
 Write-Log ("Log: {0}" -f $logFile)
 
-if (-not $Quiet) { Write-Host '' }
+Write-Step ("FINISH|{0}" -f $script:failList.Count)
+
 exit ([int]($script:failList.Count -gt 0))
