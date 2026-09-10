@@ -2,15 +2,6 @@ name: build-and-release
 
 on:
   workflow_dispatch:
-    inputs:
-      include_directx:
-        description: "Include legacy DirectX (June 2010, +96 MB payload)"
-        type: boolean
-        default: false
-      include_dotnet:
-        description: "Include .NET 6/8/10 runtimes (+232 MB payload)"
-        type: boolean
-        default: false
 
 permissions:
   contents: write
@@ -31,11 +22,8 @@ jobs:
       - name: Build payload and installer
         shell: pwsh
         run: |
-          $extra = @{}
-          if ('${{ inputs.include_directx }}' -eq 'true') { $extra['IncludeDirectX'] = $true }
-          if ('${{ inputs.include_dotnet }}'  -eq 'true') { $extra['IncludeDotNet']  = $true }
-          ./build-bundle.ps1 @extra
-          ./build-installer.ps1 @extra
+          ./build-bundle.ps1 -IncludeDirectX -IncludeDotNet
+          ./build-installer.ps1
 
       - name: Locate installer
         id: pkg
