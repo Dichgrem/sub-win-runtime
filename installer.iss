@@ -1,8 +1,8 @@
-﻿; Inno Setup script - builds a single-file offline installer.
+﻿; Inno Setup script - builds a single-file offline installer with a component picker.
 ; Build:  ISCC.exe /DINCLUDE_DIRECTX /DINCLUDE_DOTNET installer.iss
-; Or via: .\build-installer.ps1 -IncludeDirectX -IncludeDotNet
+; Or via: .\build-installer.ps1            (payload presence is auto-detected)
 ;
-; Requires this file to be saved as UTF-8 **with BOM** (non-ASCII UI strings).
+; NOTE: keep this file UTF-8 **with BOM** (non-ASCII UI strings).
 
 #define AppName "Windows Runtimes Offline"
 #define AppVer "2026.09.09"
@@ -25,9 +25,53 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 SetupLogging=yes
 
+[Types]
+Name: "full"; Description: "完整安装（全部组件）"
+Name: "typical"; Description: "推荐安装（Visual C++ 运行库 + VSTO）"
+Name: "custom"; Description: "自定义安装"; Flags: iscustom
+
+[Components]
+Name: "vc"; Description: "Visual C++ 运行库 (2005-2022, x86 + x64)"; Types: full typical custom
+Name: "vc\v2005"; Description: "VC++ 2005"; Types: full typical custom
+Name: "vc\v2008"; Description: "VC++ 2008"; Types: full typical custom
+Name: "vc\v2010"; Description: "VC++ 2010"; Types: full typical custom
+Name: "vc\v2012"; Description: "VC++ 2012"; Types: full typical custom
+Name: "vc\v2013"; Description: "VC++ 2013"; Types: full typical custom
+Name: "vc\v2015"; Description: "VC++ 2015-2022 (v14)"; Types: full typical custom
+Name: "vsto"; Description: "Visual Studio Tools for Office Runtime 4.0"; Types: full typical custom
+#ifdef INCLUDE_DOTNET
+Name: "dotnet"; Description: ".NET 运行时 (6 / 8 / 10)"; Types: full
+#endif
+#ifdef INCLUDE_DIRECTX
+Name: "directx"; Description: "legacy DirectX 9/10/11 (June 2010)"; Types: full
+#endif
+
 [Files]
-Source: "payload\*"; DestDir: "{app}\payload"; Excludes: "*.yaml"; Flags: recursesubdirs createallsubdirs
 Source: "install-offline.ps1"; DestDir: "{app}"; Flags: ignoreversion
+
+Source: "payload\Microsoft.VCRedist.2005.x86\*"; DestDir: "{app}\payload\Microsoft.VCRedist.2005.x86"; Components: vc\v2005; Excludes: "*.yaml"; Flags: recursesubdirs createallsubdirs
+Source: "payload\Microsoft.VCRedist.2005.x64\*"; DestDir: "{app}\payload\Microsoft.VCRedist.2005.x64"; Components: vc\v2005; Excludes: "*.yaml"; Flags: recursesubdirs createallsubdirs
+Source: "payload\Microsoft.VCRedist.2008.x86\*"; DestDir: "{app}\payload\Microsoft.VCRedist.2008.x86"; Components: vc\v2008; Excludes: "*.yaml"; Flags: recursesubdirs createallsubdirs
+Source: "payload\Microsoft.VCRedist.2008.x64\*"; DestDir: "{app}\payload\Microsoft.VCRedist.2008.x64"; Components: vc\v2008; Excludes: "*.yaml"; Flags: recursesubdirs createallsubdirs
+Source: "payload\Microsoft.VCRedist.2010.x86\*"; DestDir: "{app}\payload\Microsoft.VCRedist.2010.x86"; Components: vc\v2010; Excludes: "*.yaml"; Flags: recursesubdirs createallsubdirs
+Source: "payload\Microsoft.VCRedist.2010.x64\*"; DestDir: "{app}\payload\Microsoft.VCRedist.2010.x64"; Components: vc\v2010; Excludes: "*.yaml"; Flags: recursesubdirs createallsubdirs
+Source: "payload\Microsoft.VCRedist.2012.x86\*"; DestDir: "{app}\payload\Microsoft.VCRedist.2012.x86"; Components: vc\v2012; Excludes: "*.yaml"; Flags: recursesubdirs createallsubdirs
+Source: "payload\Microsoft.VCRedist.2012.x64\*"; DestDir: "{app}\payload\Microsoft.VCRedist.2012.x64"; Components: vc\v2012; Excludes: "*.yaml"; Flags: recursesubdirs createallsubdirs
+Source: "payload\Microsoft.VCRedist.2013.x86\*"; DestDir: "{app}\payload\Microsoft.VCRedist.2013.x86"; Components: vc\v2013; Excludes: "*.yaml"; Flags: recursesubdirs createallsubdirs
+Source: "payload\Microsoft.VCRedist.2013.x64\*"; DestDir: "{app}\payload\Microsoft.VCRedist.2013.x64"; Components: vc\v2013; Excludes: "*.yaml"; Flags: recursesubdirs createallsubdirs
+Source: "payload\Microsoft.VCRedist.2015+.x86\*"; DestDir: "{app}\payload\Microsoft.VCRedist.2015+.x86"; Components: vc\v2015; Excludes: "*.yaml"; Flags: recursesubdirs createallsubdirs
+Source: "payload\Microsoft.VCRedist.2015+.x64\*"; DestDir: "{app}\payload\Microsoft.VCRedist.2015+.x64"; Components: vc\v2015; Excludes: "*.yaml"; Flags: recursesubdirs createallsubdirs
+Source: "payload\Microsoft.VSTOR\*"; DestDir: "{app}\payload\Microsoft.VSTOR"; Components: vsto; Excludes: "*.yaml"; Flags: recursesubdirs createallsubdirs
+
+#ifdef INCLUDE_DOTNET
+Source: "payload\dotnet\*"; DestDir: "{app}\payload\dotnet"; Components: dotnet; Excludes: "*.yaml"; Flags: recursesubdirs createallsubdirs
+#endif
+#ifdef INCLUDE_DIRECTX
+Source: "payload\DirectX\*"; DestDir: "{app}\payload\DirectX"; Components: directx; Excludes: "*.yaml"; Flags: recursesubdirs createallsubdirs
+#endif
+
+[InstallDelete]
+Type: filesandordirs; Name: "{app}\payload"
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"
@@ -80,6 +124,59 @@ begin
   end;
 end;
 
+function AddFolder(const Acc, Folder: String): String;
+begin
+  if Acc = '' then
+    Result := Folder
+  else
+    Result := Acc + ',' + Folder;
+end;
+
+function SelectedFolderList: String;
+begin
+  Result := '';
+  if WizardIsComponentSelected('vc\v2005') then
+  begin
+    Result := AddFolder(Result, 'Microsoft.VCRedist.2005.x86');
+    Result := AddFolder(Result, 'Microsoft.VCRedist.2005.x64');
+  end;
+  if WizardIsComponentSelected('vc\v2008') then
+  begin
+    Result := AddFolder(Result, 'Microsoft.VCRedist.2008.x86');
+    Result := AddFolder(Result, 'Microsoft.VCRedist.2008.x64');
+  end;
+  if WizardIsComponentSelected('vc\v2010') then
+  begin
+    Result := AddFolder(Result, 'Microsoft.VCRedist.2010.x86');
+    Result := AddFolder(Result, 'Microsoft.VCRedist.2010.x64');
+  end;
+  if WizardIsComponentSelected('vc\v2012') then
+  begin
+    Result := AddFolder(Result, 'Microsoft.VCRedist.2012.x86');
+    Result := AddFolder(Result, 'Microsoft.VCRedist.2012.x64');
+  end;
+  if WizardIsComponentSelected('vc\v2013') then
+  begin
+    Result := AddFolder(Result, 'Microsoft.VCRedist.2013.x86');
+    Result := AddFolder(Result, 'Microsoft.VCRedist.2013.x64');
+  end;
+  if WizardIsComponentSelected('vc\v2015') then
+  begin
+    Result := AddFolder(Result, 'Microsoft.VCRedist.2015+.x86');
+    Result := AddFolder(Result, 'Microsoft.VCRedist.2015+.x64');
+  end;
+  if WizardIsComponentSelected('vsto') then
+    Result := AddFolder(Result, 'Microsoft.VSTOR');
+#ifdef INCLUDE_DOTNET
+  if WizardIsComponentSelected('dotnet') then
+    Result := AddFolder(Result, 'dotnet');
+#endif
+#ifdef INCLUDE_DIRECTX
+  if WizardIsComponentSelected('directx') then
+    Result := AddFolder(Result, 'DirectX');
+#endif
+end;
+
 procedure RunOfflineInstall;
 var
   Code, Waited, LastDone, IdleTicks: Integer;
@@ -90,19 +187,14 @@ var
 begin
   ProgressFile := ExpandConstant('{tmp}\runtimes-progress.txt');
 
-  ProgressPage := CreateOutputProgressPage('正在安装运行库', '正在安装系统所需的运行库，请勿关闭窗口。');
+  ProgressPage := CreateOutputProgressPage('正在安装运行库', '正在安装所选组件，请勿关闭窗口。');
   ProgressPage.SetText('准备中...', '');
   ProgressPage.SetProgress(0, 1);
   ProgressPage.Show;
   try
+    { -Only: install exactly the components the user checked in the component picker }
     Params := '-NoProfile -ExecutionPolicy Bypass -File "' + ExpandConstant('{app}\install-offline.ps1') +
-              '" -Quiet -ProgressFile "' + ProgressFile + '"';
-#ifdef INCLUDE_DIRECTX
-    Params := Params + ' -IncludeDirectX';
-#endif
-#ifdef INCLUDE_DOTNET
-    Params := Params + ' -IncludeDotNet';
-#endif
+              '" -Quiet -ProgressFile "' + ProgressFile + '" -Only "' + SelectedFolderList + '"';
 
     if not Exec('powershell.exe', Params, '', SW_HIDE, ewNoWait, Code) then
     begin

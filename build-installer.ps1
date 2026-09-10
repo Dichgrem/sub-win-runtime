@@ -58,8 +58,13 @@ Write-Host "ISCC: $iscc" -ForegroundColor Green
 
 # ---------- 3. compile ----------
 $defs = @()
-if ($IncludeDirectX) { $defs += '/DINCLUDE_DIRECTX' }
-if ($IncludeDotNet) { $defs += '/DINCLUDE_DOTNET' }
+# auto-detect optional payload so the component picker offers exactly what is bundled
+$hasDotNet = (Test-Path (Join-Path $root 'payload\dotnet')) -and
+(Get-ChildItem (Join-Path $root 'payload\dotnet') -Recurse -Filter *.exe -ErrorAction SilentlyContinue)
+$hasDirectX = Test-Path (Join-Path $root 'payload\DirectX\directx_Jun2010_redist.exe')
+
+if ($IncludeDirectX -or $hasDirectX) { $defs += '/DINCLUDE_DIRECTX' }
+if ($IncludeDotNet -or $hasDotNet) { $defs += '/DINCLUDE_DOTNET' }
 
 Write-Host 'compiling offline installer...' -ForegroundColor Yellow
 & $iscc @defs (Join-Path $root 'installer.iss')

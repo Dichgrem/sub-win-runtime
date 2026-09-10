@@ -1,25 +1,25 @@
 #requires -Version 5.1
 <#
 .SYNOPSIS
-    Offline runtime installer - installs everything from .\payload, no network needed.
+    Offline runtime installer - installs components from .\payload, no network needed.
 
 .DESCRIPTION
     Silent switches are taken verbatim from the official winget manifests.
 
-    When -ProgressFile is given, machine-readable progress is appended for the
-    GUI installer (installer.iss reads it to drive a real progress bar):
+    Selection modes (first match wins):
+      -Only <folders>   explicit comma-separated payload folders (used by installer.iss,
+                        e.g. "Microsoft.VCRedist.2015+.x86,Microsoft.VSTOR,dotnet")
+      -FromPayload      install whatever folders exist in .\payload
+      (neither)         core 13 components, plus -IncludeDirectX / -IncludeDotNet
 
-        TOTAL|<n>            total number of steps
-        BEGIN|<name>         a component started
-        DONE|<name>          component installed (or already present)
-        FAIL|<name>          component failed
-        FINISH|<failCount>   all done
+    With -ProgressFile, machine-readable progress is appended for the GUI installer:
+        TOTAL|<n>  BEGIN|<name>  DONE|<name>  FAIL|<name>  FINISH|<failCount>
 
 .PARAMETER IncludeDirectX
-    Install legacy DirectX (requires payload\DirectX\directx_Jun2010_redist.exe).
+    (legacy mode) also install legacy DirectX.
 
 .PARAMETER IncludeDotNet
-    Install .NET modern runtimes (requires payload\dotnet\*).
+    (legacy mode) also install .NET modern runtimes.
 
 .PARAMETER Quiet
     No console output (log file only).
@@ -27,16 +27,21 @@
 .PARAMETER ProgressFile
     Path the progress lines are appended to (used by installer.iss).
 
-.EXAMPLE
-    .\install-offline.ps1
-    .\install-offline.ps1 -IncludeDirectX -IncludeDotNet -ProgressFile C:\temp\p.txt
+.PARAMETER FromPayload
+    Install exactly the components present in .\payload (ignores -IncludeDirectX / -IncludeDotNet).
+
+.PARAMETER Only
+    Comma-separated payload folder names to install; "dotnet" expands to all .NET sub-packages,
+    "DirectX" to the legacy DirectX redist.
 #>
 [CmdletBinding()]
 param(
     [switch]$IncludeDirectX,
     [switch]$IncludeDotNet,
     [switch]$Quiet,
-    [string]$ProgressFile
+    [string]$ProgressFile,
+    [switch]$FromPayload,
+    [string]$Only
 )
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -122,22 +127,7 @@ function Invoke-DirectXStep {
     return $false
 }
 
-# ---------------------------------------------------------------- preflight
-if (-not (Test-Admin)) {
-    Write-Host 'ERROR: Administrator rights are required. Please run install-offline.cmd' -ForegroundColor Red
-    exit 1
-}
-if (-not (Test-Path $payload)) {
-    Write-Host "ERROR: payload folder not found: $payload" -ForegroundColor Red
-    Write-Host 'Run build-bundle.ps1 once while online.' -ForegroundColor Yellow
-    exit 1
-}
-
-"=== Offline runtimes install started $(Get-Date) ===" | Set-Content -LiteralPath $logFile -Encoding UTF8
-if ($ProgressFile) { Remove-Item -LiteralPath $ProgressFile -Force -ErrorAction SilentlyContinue }
-
-# ---------------------------------------------------------------- build step list
-$steps = @()
+# ---------------------------------------------------------------- component table
 $core = @(
     @{ Name = 'VC++ 2005 x86'; Folder = 'Microsoft.VCRedist.2005.x86'; Args = @('/Q', '/C:"msiexec /i ""vcredist.msi"" /quiet /norestart"') },
     @{ Name = 'VC++ 2005 x64'; Folder = 'Microsoft.VCRedist.2005.x64'; Args = @('/Q', '/C:"msiexec /i ""vcredist.msi"" /quiet /norestart"') },
@@ -153,26 +143,76 @@ $core = @(
     @{ Name = 'VC++ 2015-2022 (v14) x64'; Folder = 'Microsoft.VCRedist.2015+.x64'; Args = @('/quiet', '/norestart') },
     @{ Name = 'VSTO 4.0 Runtime'; Folder = 'Microsoft.VSTOR'; Args = @('/q', '/norestart') }
 )
-foreach ($i in $core) { $steps += @{ Kind = 'pkg'; Name = $i.Name; Folder = $i.Folder; Args = $i.Args } }
+$coreLookup = @{}
+foreach ($i in $core) { $coreLookup[$i.Folder] = $i }
 
-if ($IncludeDotNet) {
-    $dnRoot = Join-Path $payload 'dotnet'
-    if (Test-Path $dnRoot) {
-        foreach ($dir in Get-ChildItem $dnRoot -Directory) {
-            $steps += @{ Kind = 'pkg'; Name = $dir.Name; Folder = "dotnet\$($dir.Name)"; Args = @('/install', '/quiet', '/norestart') }
+$steps = @()
+
+function Add-StepForFolder {
+    param([string]$Folder)
+
+    if ($Folder -eq 'dotnet') {
+        $dnRoot = Join-Path $payload 'dotnet'
+        if (-not (Test-Path $dnRoot)) { return }
+        foreach ($dir in (Get-ChildItem $dnRoot -Directory | Sort-Object Name)) {
+            $script:steps += @{ Kind = 'pkg'; Name = $dir.Name; Folder = "dotnet\$($dir.Name)"; Args = @('/install', '/quiet', '/norestart') }
         }
+        return
     }
-    else {
-        Write-Log '       MISS: payload\dotnet (run build-bundle.ps1 -IncludeDotNet)' 'Yellow'
+
+    if ($Folder -eq 'DirectX') {
+        $script:steps += @{ Kind = 'directx'; Name = 'Legacy DirectX (June 2010)'; Folder = 'DirectX' }
+        return
+    }
+
+    if ($coreLookup.ContainsKey($Folder)) {
+        $i = $coreLookup[$Folder]
+        $script:steps += @{ Kind = 'pkg'; Name = $i.Name; Folder = $i.Folder; Args = $i.Args }
     }
 }
 
-if ($IncludeDirectX) {
-    $steps += @{ Kind = 'directx'; Name = 'Legacy DirectX (June 2010)'; Folder = 'DirectX' }
+# ---------------------------------------------------------------- preflight
+if (-not (Test-Admin)) {
+    Write-Host 'ERROR: Administrator rights are required. Please run install-offline.cmd' -ForegroundColor Red
+    exit 1
+}
+if (-not (Test-Path $payload)) {
+    Write-Host "ERROR: payload folder not found: $payload" -ForegroundColor Red
+    Write-Host 'Run build-bundle.ps1 once while online.' -ForegroundColor Yellow
+    exit 1
+}
+
+"=== Offline runtimes install started $(Get-Date) ===" | Set-Content -LiteralPath $logFile -Encoding UTF8
+if ($ProgressFile) { Remove-Item -LiteralPath $ProgressFile -Force -ErrorAction SilentlyContinue }
+
+# ---------------------------------------------------------------- build step list
+if ($Only) {
+    foreach ($folder in ($Only -split ',' | Where-Object { $_.Trim() })) {
+        Add-StepForFolder $folder.Trim()
+    }
+}
+elseif ($FromPayload) {
+    foreach ($i in $core) {
+        if (Test-Path (Join-Path $payload $i.Folder)) { Add-StepForFolder $i.Folder }
+    }
+    Add-StepForFolder 'dotnet'
+    if (Test-Path (Join-Path $payload 'DirectX\directx_Jun2010_redist.exe')) { Add-StepForFolder 'DirectX' }
+}
+else {
+    foreach ($i in $core) { Add-StepForFolder $i.Folder }
+    if ($IncludeDotNet) { Add-StepForFolder 'dotnet' }
+    if ($IncludeDirectX) { Add-StepForFolder 'DirectX' }
+}
+
+if ($steps.Count -eq 0) {
+    Write-Log 'Nothing selected - no component to install.' 'Yellow'
+    Write-Step 'TOTAL|0'
+    Write-Step 'FINISH|0'
+    exit 0
 }
 
 # ---------------------------------------------------------------- run
-Write-Log ("Installing {0} components..." -f $steps.Count) 'White'
+Write-Log ("Installing {0} component(s)..." -f $steps.Count) 'White'
 Write-Step ("TOTAL|{0}" -f $steps.Count)
 
 foreach ($step in $steps) {
