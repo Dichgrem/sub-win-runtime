@@ -5,12 +5,18 @@
 ; NOTE: keep this file UTF-8 **with BOM** (non-ASCII UI strings).
 
 #define AppName "Windows Runtimes Offline"
-#define AppVer "2026.09.09"
+
+; build date, e.g. 2026-09-10; override with ISCC /DBUILD_DATE=...
+#ifndef BUILD_DATE
+  #define BUILD_DATE GetDateTimeString('yyyy-mm-dd', '', '')
+#endif
 
 [Setup]
 AppId={{8F3A6E1C-2B4D-4C77-9E51-7A1D3C5B9E42}
 AppName={#AppName}
-AppVersion={#AppVer}
+AppVersion={#BUILD_DATE}
+AppVerName={#AppName} {#BUILD_DATE}
+VersionInfoVersion={#StringChange(BUILD_DATE, '-', '.')}.0
 AppPublisher=windows-runtimes-offline
 SetupIconFile=assets\app.ico
 UninstallDisplayIcon={app}\app.ico
@@ -19,7 +25,7 @@ DisableDirPage=yes
 DisableProgramGroupPage=yes
 PrivilegesRequired=admin
 OutputDir=dist
-OutputBaseFilename=windows-runtimes-offline-setup
+OutputBaseFilename=windows-runtimes-{#BUILD_DATE}
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
