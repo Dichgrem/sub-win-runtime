@@ -27,6 +27,10 @@ if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
+# refresh the source index first so we always pull the newest published version
+Write-Host 'refreshing winget source index...' -ForegroundColor Cyan
+winget source update --disable-interactivity 2>&1 | Out-Null
+
 $core = @(
     'Microsoft.VCRedist.2005.x86', 'Microsoft.VCRedist.2005.x64',
     'Microsoft.VCRedist.2008.x86', 'Microsoft.VCRedist.2008.x64',

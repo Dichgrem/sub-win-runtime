@@ -11,7 +11,7 @@ if %errorlevel%==0 goto :run
 
 echo Requesting administrator privileges...
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-  "Start-Process -FilePath '%~dp0install-offline.cmd' -Verb RunAs"
+  "Start-Process -FilePath '%~dp0run-offline.cmd' -Verb RunAs"
 exit /b
 
 :run
@@ -20,5 +20,5 @@ echo === Windows Runtimes Offline ===
 echo.
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0install-offline.ps1" %*
 echo.
-echo Finished. Log: install-offline.log
+echo Finished. Log: install.log
 pause

@@ -12,14 +12,14 @@
 ```
 
 目标机：拷贝 exe → 双击 → UAC → 静默安装 → 需要时重启。
-日志：`%ProgramFiles%\WindowsRuntimesOffline\install-offline.log`
+日志：`%ProgramFiles%\WindowsRuntimesOffline\install.log`
 
 ### 离线 · 文件夹（独立脚本运行）
 
 ```powershell
 .\build-bundle.ps1                     # 只需 payload/
 # 拷到目标机后：
-.\install-offline.cmd                  # 双击，自动提权
+.\run-offline.cmd                  # 双击，自动提权
 .\install-offline.ps1                  # 或管理员 PowerShell 直接运行
 ```
 

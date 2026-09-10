@@ -46,7 +46,7 @@ param(
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $payload = Join-Path $root 'payload'
-$logFile = Join-Path $root 'install-offline.log'
+$logFile = Join-Path $root 'install.log'
 
 $script:okCount = 0
 $script:failList = @()
@@ -173,7 +173,7 @@ function Add-StepForFolder {
 
 # ---------------------------------------------------------------- preflight
 if (-not (Test-Admin)) {
-    Write-Host 'ERROR: Administrator rights are required. Please run install-offline.cmd' -ForegroundColor Red
+    Write-Host 'ERROR: Administrator rights are required. Please run run-offline.cmd' -ForegroundColor Red
     exit 1
 }
 if (-not (Test-Path $payload)) {

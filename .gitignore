@@ -6,7 +6,7 @@ tools/
 
 # ---- logs / temp ----
 *.log
-install-offline.log
+install.log
 installer-output.txt
 
 # ---- OS noise ----

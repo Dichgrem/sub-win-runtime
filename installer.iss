@@ -235,7 +235,7 @@ begin
   end;
 
   if FailCount > 0 then
-    MsgBox(Format('有 %d 个组件安装失败。'#13#10'详情见安装目录下的 install-offline.log。', [FailCount]), mbError, MB_OK);
+    MsgBox(Format('有 %d 个组件安装失败。'#13#10'详情见安装目录下的 install.log。', [FailCount]), mbError, MB_OK);
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
