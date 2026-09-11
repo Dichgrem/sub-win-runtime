@@ -19,7 +19,10 @@ AppVerName={#AppName} {#BUILD_DATE}
 VersionInfoVersion={#StringChange(BUILD_DATE, '-', '.')}.0
 AppPublisher=windows-runtimes-offline
 SetupIconFile=assets\app.ico
-UninstallDisplayIcon={app}\app.ico
+; ---- 本产品只是「离线安装包」：不注册卸载项、不生成卸载器 ----
+; 各运行库自带官方卸载条目（控制面板 / Geek），本目录直接删除即可
+Uninstallable=no
+CreateUninstallRegKey=no
 DefaultDirName={autopf}\WindowsRuntimesOffline
 DisableDirPage=yes
 DisableProgramGroupPage=yes
@@ -56,7 +59,6 @@ Name: "directx"; Description: "legacy DirectX 9/10/11 (June 2010)"; Types: full
 
 [Files]
 Source: "install-offline.ps1"; DestDir: "{app}"; Flags: ignoreversion
-Source: "assets\app.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 Source: "payload\Microsoft.VCRedist.2005.x86\*"; DestDir: "{app}\payload\Microsoft.VCRedist.2005.x86"; Components: vc\v2005; Excludes: "*.yaml"; Flags: recursesubdirs createallsubdirs
 Source: "payload\Microsoft.VCRedist.2005.x64\*"; DestDir: "{app}\payload\Microsoft.VCRedist.2005.x64"; Components: vc\v2005; Excludes: "*.yaml"; Flags: recursesubdirs createallsubdirs
@@ -81,9 +83,6 @@ Source: "payload\DirectX\*"; DestDir: "{app}\payload\DirectX"; Components: direc
 
 [InstallDelete]
 Type: filesandordirs; Name: "{app}\payload"
-
-[UninstallDelete]
-Type: filesandordirs; Name: "{app}"
 
 [Code]
 var
@@ -203,7 +202,8 @@ begin
   try
     { -Only: install exactly the components the user checked in the component picker }
     Params := '-NoProfile -ExecutionPolicy Bypass -File "' + ExpandConstant('{app}\install-offline.ps1') +
-              '" -Quiet -ProgressFile "' + ProgressFile + '" -Only "' + SelectedFolderList + '"';
+              '" -Quiet -ProgressFile "' + ProgressFile + '" -Only "' + SelectedFolderList + '"' +
+              ' -LogFile "' + ExpandConstant('{commonappdata}\WindowsRuntimesOffline\install.log') + '"';
 
     if not Exec('powershell.exe', Params, '', SW_HIDE, ewNoWait, Code) then
     begin
@@ -241,5 +241,10 @@ end;
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
+  begin
     RunOfflineInstall;
+    // 安装完本工具不留任何东西：载荷、脚本都已无用（日志已写到 %ProgramData%），整个安装目录删掉
+    // 文件夹模式（直接跑 run-offline.cmd）不受影响，载荷留在原地
+    DelTree(ExpandConstant('{app}'), True, True, True);
+  end;
 end;

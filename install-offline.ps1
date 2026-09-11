@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 <#
 .SYNOPSIS
     Offline runtime installer - installs components from .\payload, no network needed.
@@ -41,12 +41,13 @@ param(
     [switch]$Quiet,
     [string]$ProgressFile,
     [switch]$FromPayload,
-    [string]$Only
+    [string]$Only,
+    [string]$LogFile
 )
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $payload = Join-Path $root 'payload'
-$logFile = Join-Path $root 'install.log'
+$logFile = if ($LogFile) { $LogFile } else { Join-Path $root 'install.log' }
 
 $script:okCount = 0
 $script:failList = @()
@@ -182,6 +183,9 @@ if (-not (Test-Path $payload)) {
     exit 1
 }
 
+if (-not (Test-Path -LiteralPath (Split-Path -Parent $logFile))) {
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $logFile) | Out-Null
+}
 "=== Offline runtimes install started $(Get-Date) ===" | Set-Content -LiteralPath $logFile -Encoding UTF8
 if ($ProgressFile) { Remove-Item -LiteralPath $ProgressFile -Force -ErrorAction SilentlyContinue }
 

@@ -13,11 +13,11 @@
 
 目标机：拷贝 exe → 双击 → UAC → **选择组件** → **安装进度页** → 完成（必要时重启）
 
-| 项       | 说明                                                |
-| -------- | --------------------------------------------------- |
-| 产物大小 | 核心约 126 MB；若打包了 .NET/DirectX 约 444 MB      |
-| 安装日志 | `%ProgramFiles%\WindowsRuntimesOffline\install.log` |
-| 安装位置 | `%ProgramFiles%\WindowsRuntimesOffline\`            |
+| 项       | 说明                                                           |
+| -------- | -------------------------------------------------------------- |
+| 产物大小 | 核心约 126 MB；若打包了 .NET/DirectX 约 444 MB                 |
+| 安装日志 | `%ProgramData%\WindowsRuntimesOffline\install.log`             |
+| 安装位置 | 装完**不留任何文件**（仅运行时由系统维护；本工具自身不占目录） |
 
 **组件选择页**（只有打包进 exe 的组件才会出现选项）
 
@@ -59,7 +59,7 @@
 | `install-online.ps1`  | **在线模式**：直接用 winget 安装（无需 payload）                    |
 | `build-bundle.ps1`    | 构建侧：下载官方安装器到 `payload/`（构建前自动刷新 winget 源索引） |
 | `build-installer.ps1` | 构建侧：编译 `installer.iss` → `dist\windows-runtimes-<日期>.exe`   |
-| `installer.iss`       | Inno 工程：组件选择页、进度页、图标、卸载项                         |
+| `installer.iss`       | Inno 工程：组件选择页、进度页、图标（**不注册卸载项**）             |
 
 ### 可选组件（打包时决定）
 
@@ -81,19 +81,20 @@ Get-ChildItem payload -Recurse -Filter *.exe |
 winget list --source winget | Select-String 'VCRedist|VSTOR'
 
 # 本次安装结果（Summary 行）
-Get-Content 'C:\Program Files\WindowsRuntimesOffline\install.log' -Tail 10
+Get-Content "$env:ProgramData\WindowsRuntimesOffline\install.log" -Tail 10
 ```
 
 ### FAQ
 
-| 问题                        | 说明                                                                                                                                            |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| "未知发布者"提示            | 外层安装器无代码签名证书；内层安装器（核心 13 项 / 含可选共 20 项）均为微软签名。可配证书 + Inno `SignTool` 消除                                |
-| 产物是 126 MB 还是 444 MB？ | 取决于打包内容：核心（VC++ + VSTO）≈ 126 MB；含 .NET（232 MB）+ DirectX（96 MB）≈ 444 MB                                                        |
-| 重复运行                    | 安全。MSI/Burn 自带版本检测，已装即秒退                                                                                                         |
-| .NET Framework 3.5          | 安装器暂不集成；需 Windows 安装介质或 Windows 更新：`DISM /Online /Enable-Feature /FeatureName:NetFx3 /All /LimitAccess /Source:X:\sources\sxs` |
-| 卸载                        | 控制面板卸载 "Windows Runtimes Offline"；已安装的运行库是独立组件，不会被移除                                                                   |
-| 刷新到最新版                | `.\build-bundle.ps1 -Force` → `.\build-installer.ps1`                                                                                           |
+| 问题                        | 说明                                                                                                                                                                                           |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "未知发布者"提示            | 外层安装器无代码签名证书；内层安装器（核心 13 项 / 含可选共 20 项）均为微软签名。可配证书 + Inno `SignTool` 消除                                                                               |
+| 产物是 126 MB 还是 444 MB？ | 取决于打包内容：核心（VC++ + VSTO）≈ 126 MB；含 .NET（232 MB）+ DirectX（96 MB）≈ 444 MB                                                                                                       |
+| 重复运行                    | 安全。MSI/Burn 自带版本检测，已装即秒退                                                                                                                                                        |
+| .NET Framework 3.5          | 安装器暂不集成；需 Windows 安装介质或 Windows 更新：`DISM /Online /Enable-Feature /FeatureName:NetFx3 /All /LimitAccess /Source:X:\sources\sxs`                                                |
+| 卸载                        | **本工具不注册卸载项**（Geek/控制面板里不会多出一项），安装后也不留目录；各组件自带官方条目，各自卸载即可                                                                                      |
+| 安装后会留什么？            | **exe 模式什么都不留**：载荷解压到 `{app}` 供安装，装完连脚本一起删掉（日志写到 `%ProgramData%\WindowsRuntimesOffline\install.log`）；**文件夹模式（直接跑 `run-offline.cmd`）保留原地的载荷** |
+| 刷新到最新版                | `.\build-bundle.ps1 -Force` → `.\build-installer.ps1`                                                                                                                                          |
 
 ---
 
@@ -118,7 +119,7 @@ Get-Content 'C:\Program Files\WindowsRuntimesOffline\install.log' -Tail 10
 
 | 项          | 值                                                                                                                       |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------ |
-| 压缩 | `lzma2/ultra64` + solid |
+| 压缩        | `lzma2/ultra64` + solid                                                                                                  |
 | 权限 / 架构 | `admin` / `x64compatible`                                                                                                |
 | 排除        | `*.yaml`                                                                                                                 |
 | 安装入口    | `[Code]` 中隐藏调用 `install-offline.ps1 -Quiet -Only <选中组件> -ProgressFile <temp>`，进度页的进度条与文字由该文件驱动 |
@@ -185,13 +186,13 @@ Get-Content 'C:\Program Files\WindowsRuntimesOffline\install.log' -Tail 10
 
 ### 路径
 
-| 路径                                     | 说明                               |
-| ---------------------------------------- | ---------------------------------- |
-| `payload/<PackageId>/`                   | 官方安装器 + manifest（`.yaml`）   |
-| `payload/dotnet/`、`payload/DirectX/`    | 可选载荷                           |
-| `dist/windows-runtimes-<日期>.exe`       | 单文件安装器                       |
-| `assets/app.ico`                         | 图标（构建时嵌入 exe）             |
-| `%ProgramFiles%\WindowsRuntimesOffline\` | 目标机安装位置（含 `install.log`） |
+| 路径                                    | 说明                             |
+| --------------------------------------- | -------------------------------- |
+| `payload/<PackageId>/`                  | 官方安装器 + manifest（`.yaml`） |
+| `payload/dotnet/`、`payload/DirectX/`   | 可选载荷                         |
+| `dist/windows-runtimes-<日期>.exe`      | 单文件安装器                     |
+| `assets/app.ico`                        | 图标（构建时嵌入 exe）           |
+| `%ProgramData%\WindowsRuntimesOffline\` | 安装日志（目标机上）             |
 
 ### 溯源
 
